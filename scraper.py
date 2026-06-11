@@ -35,7 +35,7 @@ def scrape_web3():
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'html.parser')
         
-        rows = soup.select('tbody tr')[:30]  # Ambil lebih banyak
+        rows = soup.select('tbody tr')[:30]
         
         new_jobs = 0
         for row in rows:
