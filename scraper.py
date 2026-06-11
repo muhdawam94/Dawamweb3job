@@ -6,80 +6,50 @@ import os
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-KEYWORDS = ["Community", "Manager", "Social Media", "Marketing", "Content", 
-            "Executive", "Growth", "BD", "Business Development", "Partnership",
-            "Moderator", "Admin", "Support", "Assistant", "Coordinator", "Social"]
-
-checked_jobs = set()
+KEYWORDS = ["Community", "Manager", "Social", "Marketing", "Content", "Growth", 
+            "BD", "Business Development", "Moderator", "Admin", "Support"]
 
 def send_telegram(message):
-    if not TELEGRAM_TOKEN or not CHAT_ID:
-        print("❌ TOKEN atau CHAT_ID kosong")
-        return
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
         requests.post(url, json=payload, timeout=10)
-        print("✅ Pesan berhasil dikirim ke Telegram")
+        print("✅ Telegram sent")
     except Exception as e:
-        print(f"❌ Gagal kirim ke Telegram: {e}")
+        print(f"Telegram error: {e}")
 
 def scrape_web3():
+    print("🔍 Mulai scraping...")
     url = "https://web3.career/"
     headers = {"User-Agent": "Mozilla/5.0"}
     
-    try:
-        print("🔍 Mulai scraping web3.career...")
-        r = requests.get(url, headers=headers, timeout=15)
-        print(f"📡 Status Code: {r.status_code}")
-        
-        soup = BeautifulSoup(r.text, 'html.parser')
-        rows = soup.select('tbody tr')
-        print(f"📊 Ditemukan {len(rows)} lowongan di halaman")
-        
-        new_jobs = 0
-        for row in rows[:30]:
-            try:
-                link_tag = row.find('a', href=True)
-                if not link_tag: 
-                    continue
-                    
-                title = link_tag.get_text(strip=True)
-                link = "https://web3.career" + link_tag['href']
-                job_id = link.split('/')[-1]
-                
-                if job_id in checked_jobs:
-                    continue
-                
-                tds = row.find_all('td')
-                company = tds[1].get_text(strip=True) if len(tds) > 1 else "Unknown"
-                
-                match = any(kw.lower() in title.lower() for kw in KEYWORDS)
-                print(f"Job: {title[:50]}... | Match: {match}")
-                
-                if match:
-                    message = f"""
-🔔 <b>Lowongan Web3 Baru!</b>
+    r = requests.get(url, headers=headers, timeout=15)
+    print(f"Status: {r.status_code}")
+    
+    soup = BeautifulSoup(r.text, 'html.parser')
+    rows = soup.select('tbody tr')
+    print(f"Ditemukan {len(rows)} lowongan")
 
-📌 <b>{title}</b>
-🏢 {company}
-🔗 {link}
-                    """
-                    send_telegram(message.strip())
-                    checked_jobs.add(job_id)
-                    new_jobs += 1
-                    
-            except:
-                continue
-                
-        print(f"✅ Selesai. Total lowongan match: {new_jobs}")
-        if new_jobs == 0:
-            send_telegram("✅ Bot berjalan.\nTidak ada lowongan yang match keyword hari ini.")
+    sent = 0
+    for row in rows[:30]:
+        try:
+            a = row.find('a')
+            if not a: continue
+            title = a.get_text(strip=True)
+            link = "https://web3.career" + a['href']
             
-    except Exception as e:
-        error_msg = f"❌ Error: {str(e)}"
-        print(error_msg)
-        send_telegram(error_msg)
+            if any(kw.lower() in title.lower() for kw in KEYWORDS):
+                company = row.find_all('td')[1].get_text(strip=True) if len(row.find_all('td')) > 1 else ""
+                msg = f"🔔 Lowongan Baru!\n\n{title}\n{company}\n{link}"
+                send_telegram(msg)
+                sent += 1
+                print(f"✅ Match: {title[:60]}")
+        except:
+            continue
+            
+    print(f"Selesai. Dikirim {sent} lowongan")
+    if sent == 0:
+        send_telegram("✅ Bot jalan normal.\nTidak ada lowongan match hari ini.")
 
 if __name__ == "__main__":
     scrape_web3()
