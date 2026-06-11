@@ -3,45 +3,46 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import os
 
-# ================= CONFIG =================
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 KEYWORDS = ["Community", "Manager", "Social Media", "Marketing", "Content", 
-            "Executive", "Growth", "BD", "Business Development", "Partnership"]
+            "Executive", "Growth", "BD", "Business Development", "Partnership",
+            "Moderator", "Admin", "Support", "Assistant", "Coordinator"]
 
 checked_jobs = set()
 
 def send_telegram(message):
     if not TELEGRAM_TOKEN or not CHAT_ID:
-        print("❌ TELEGRAM_TOKEN atau CHAT_ID belum di-set")
+        print("❌ TOKEN atau CHAT_ID kosong")
         return
-    
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
         requests.post(url, json=payload, timeout=10)
-    except:
-        pass
+        print("✅ Pesan dikirim ke Telegram")
+    except Exception as e:
+        print(f"❌ Gagal kirim Telegram: {e}")
 
 def scrape_web3():
     url = "https://web3.career/"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
     
     try:
+        print("🔍 Mulai scraping...")
         r = requests.get(url, headers=headers, timeout=15)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, 'html.parser')
+        print(f"📡 Status Code: {r.status_code}")
         
-        rows = soup.select('tbody tr')[:30]
+        soup = BeautifulSoup(r.text, 'html.parser')
+        rows = soup.select('tbody tr')
+        
+        print(f"📊 Ditemukan {len(rows)} job rows")
         
         new_jobs = 0
-        for row in rows:
+        for row in rows[:20]:   # Batasi 20 dulu
             try:
                 link_tag = row.find('a', href=True)
-                if not link_tag:
+                if not link_tag: 
                     continue
                     
                 title = link_tag.get_text(strip=True)
@@ -53,30 +54,34 @@ def scrape_web3():
                 
                 tds = row.find_all('td')
                 company = tds[1].get_text(strip=True) if len(tds) > 1 else "Unknown"
-                posted = tds[2].get_text(strip=True) if len(tds) > 2 else ""
                 
-                if any(kw.lower() in title.lower() for kw in KEYWORDS):
+                match = any(kw.lower() in title.lower() for kw in KEYWORDS)
+                
+                print(f"Job: {title[:60]}... | Company: {company} | Match: {match}")
+                
+                if match:
                     message = f"""
 🔔 <b>Lowongan Web3 Baru!</b>
 
 📌 <b>{title}</b>
 🏢 {company}
-⏰ {posted}
 🔗 {link}
 
-🕒 {datetime.now().strftime('%d %B %Y, %H:%M WIB')}
+🕒 {datetime.now().strftime('%d %B %Y, %H:%M')}
                     """
                     send_telegram(message.strip())
                     checked_jobs.add(job_id)
                     new_jobs += 1
                     
-            except:
+            except Exception as e:
                 continue
                 
-        print(f"✅ Selesai. Ditemukan {new_jobs} lowongan baru.")
+        print(f"✅ Selesai scrape. Ditemukan {new_jobs} lowongan baru.")
+        if new_jobs == 0:
+            send_telegram("✅ Bot berjalan normal.\nTidak ada lowongan baru yang match keyword hari ini.")
         
     except Exception as e:
-        error_msg = f"❌ Error scraping: {str(e)}"
+        error_msg = f"❌ Error utama: {str(e)}"
         print(error_msg)
         send_telegram(error_msg)
 
