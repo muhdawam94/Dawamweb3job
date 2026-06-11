@@ -8,7 +8,7 @@ CHAT_ID = os.getenv("CHAT_ID")
 
 KEYWORDS = ["Community", "Manager", "Social Media", "Marketing", "Content", 
             "Executive", "Growth", "BD", "Business Development", "Partnership",
-            "Moderator", "Admin", "Support", "Assistant", "Coordinator"]
+            "Moderator", "Admin", "Support", "Assistant", "Coordinator", "Social"]
 
 checked_jobs = set()
 
@@ -20,26 +20,25 @@ def send_telegram(message):
     payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
         requests.post(url, json=payload, timeout=10)
-        print("✅ Pesan dikirim ke Telegram")
+        print("✅ Pesan berhasil dikirim ke Telegram")
     except Exception as e:
-        print(f"❌ Gagal kirim Telegram: {e}")
+        print(f"❌ Gagal kirim ke Telegram: {e}")
 
 def scrape_web3():
     url = "https://web3.career/"
     headers = {"User-Agent": "Mozilla/5.0"}
     
     try:
-        print("🔍 Mulai scraping...")
+        print("🔍 Mulai scraping web3.career...")
         r = requests.get(url, headers=headers, timeout=15)
         print(f"📡 Status Code: {r.status_code}")
         
         soup = BeautifulSoup(r.text, 'html.parser')
         rows = soup.select('tbody tr')
-        
-        print(f"📊 Ditemukan {len(rows)} job rows")
+        print(f"📊 Ditemukan {len(rows)} lowongan di halaman")
         
         new_jobs = 0
-        for row in rows[:25]:
+        for row in rows[:30]:
             try:
                 link_tag = row.find('a', href=True)
                 if not link_tag: 
@@ -56,8 +55,7 @@ def scrape_web3():
                 company = tds[1].get_text(strip=True) if len(tds) > 1 else "Unknown"
                 
                 match = any(kw.lower() in title.lower() for kw in KEYWORDS)
-                
-                print(f"Job: {title[:60]}... | Company: {company} | Match: {match}")
+                print(f"Job: {title[:50]}... | Match: {match}")
                 
                 if match:
                     message = f"""
@@ -74,12 +72,12 @@ def scrape_web3():
             except:
                 continue
                 
-        print(f"✅ Selesai scrape. Ditemukan {new_jobs} lowongan baru.")
+        print(f"✅ Selesai. Total lowongan match: {new_jobs}")
         if new_jobs == 0:
-            send_telegram("✅ Bot berjalan normal.\nTidak ada lowongan baru yang match keyword saat ini.")
-        
+            send_telegram("✅ Bot berjalan.\nTidak ada lowongan yang match keyword hari ini.")
+            
     except Exception as e:
-        error_msg = f"❌ Error utama: {str(e)}"
+        error_msg = f"❌ Error: {str(e)}"
         print(error_msg)
         send_telegram(error_msg)
 
