@@ -39,7 +39,7 @@ def scrape_web3():
         print(f"📊 Ditemukan {len(rows)} job rows")
         
         new_jobs = 0
-        for row in rows[:20]:   # Batasi 20 dulu
+        for row in rows[:25]:
             try:
                 link_tag = row.find('a', href=True)
                 if not link_tag: 
@@ -66,19 +66,17 @@ def scrape_web3():
 📌 <b>{title}</b>
 🏢 {company}
 🔗 {link}
-
-🕒 {datetime.now().strftime('%d %B %Y, %H:%M')}
                     """
                     send_telegram(message.strip())
                     checked_jobs.add(job_id)
                     new_jobs += 1
                     
-            except Exception as e:
+            except:
                 continue
                 
         print(f"✅ Selesai scrape. Ditemukan {new_jobs} lowongan baru.")
         if new_jobs == 0:
-            send_telegram("✅ Bot berjalan normal.\nTidak ada lowongan baru yang match keyword hari ini.")
+            send_telegram("✅ Bot berjalan normal.\nTidak ada lowongan baru yang match keyword saat ini.")
         
     except Exception as e:
         error_msg = f"❌ Error utama: {str(e)}"
